@@ -1,9 +1,8 @@
 //Braden Batman                                                                                                                                                                                             
 //CIS 363 Concurrent Programming                                                                                                                                                                            
-//HPC Project - Matrix Multiplication    
+//HPC Project - Matrix Multiplication                                                                                                                                                                              
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <thread>
 #include <sys/time.h>
 
 typedef unsigned long long timestamp_t;
@@ -22,9 +21,9 @@ timestamp_t get_timestamp ()
 timestamp_t pre, post;
 
 //matrixSize determines the size of the x and y dimensions of the square matrixes.
-const int matrixSize = 100;
-const int xSize = matrixSize;
-const int ySize = matrixSize;
+int matrixSize = 200;
+int xSize = matrixSize;
+int ySize = matrixSize;
 
 //Allocates the memory spots for a 2D array.
 int** create2DArray(){
@@ -55,7 +54,7 @@ void randPop(int** arr){
   }
 }
 
-//Populates a passed in array with the identity matrix. (diagonal contains 1s, rest are 0s)
+//Populates a passed in array with the identity matrix. 
 void identityPop(int** arr){
   for(int x=0;x<xSize;x++){
     for(int y=0;y<ySize;y++){
@@ -85,6 +84,29 @@ int mult(int x, int y){
   resultMat[y][x] = result;
 }
 
+//Performs mult for each spot in a row
+void rowMult(int row){
+  for(int x=0;x<xSize;x++){
+    mult(x,row);
+  }
+}
+
+//Spawn threads to perform the mult function for each row in the result matrix.
+void spawnThreads(){
+  int threadNum = ySize;
+  std::thread threads[threadNum];
+
+  int i=0;
+  for(int y=0;y<ySize;y++){
+      threads[i] = std::thread(rowMult, y);
+    i++;
+  }
+
+  for(int j=0;j<threadNum;j++){
+        threads[j].join();
+    }
+}
+
 //Prints a matrix
 void printMat(int** mat){
     for (int y=0;y<ySize;y++){
@@ -98,29 +120,23 @@ void printMat(int** mat){
 
 int main(int argc, char **argv)
 {
-    randPop(firstMat);
-    randPop(secondMat);
+  randPop(firstMat);
+  randPop(secondMat);
 
-    //Having the second matrix set as the identity matrix is useful for testing, as it makes firstMat and resultMat the same.
-    // identityPop(secondMat);
+  //Having the second matrix set as the identity matrix is useful for testing, as it makes firstMat and resultMat the same.
+  // identityPop(secondMat);
 
-    pre = get_timestamp();
+  pre = get_timestamp();
+  spawnThreads();
+  post = get_timestamp();
 
-    //The mult function is performed for each spot in the result matrix sequentially.
-    for(int y=0;y<ySize;y++){
-        for(int x=0;x<xSize;x++){
-      mult(x, y);    
-      }
-    }
-    post = get_timestamp();
+  // printMat(firstMat);
+  // printMat(resultMat);
 
-    // printMat(firstMat);
-    // printMat(resultMat);
+  printf("Runtime: %llu microseconds\n", post - pre);
+  printf("Size of Matrixes: %d x %d \n", xSize,ySize);
 
-    printf("Runtime: %llu microseconds\n", post - pre);
-    printf("Size of Matrixes: %d x %d \n", xSize,ySize);
-
-    delete2DArray(firstMat);
-    delete2DArray(secondMat);
-    delete2DArray(resultMat);
+  delete2DArray(firstMat);
+  delete2DArray(secondMat);
+  delete2DArray(resultMat);
 }
